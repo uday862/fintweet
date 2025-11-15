@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.py.class
+
+# Virtual environment
+venv/
+.env/
+env/
+ENV/
+.venv/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Byte-compiled and cache
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Environment variable files
+*.env
+.env.*
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing and coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# FastAPI / Flask specific
+instance/
+*.db
+*.sqlite3
+
+constants.py

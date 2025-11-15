@@ -1,0 +1,12 @@
+{
+  "name": "cursor-projects",
+  "version": "1.0.0",
+  "description": "FinTweet is a modular, full-stack financial sentiment platform built with the MERN stack and Python microservices. It tracks financial sentiment from Twitter, analyzes impact on stocks, and provides a real-time dashboard for insights.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
