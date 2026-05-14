@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './Login.css';
+import { authRegister } from '../api';
 
 function Register({ onRegister, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -23,7 +24,6 @@ function Register({ onRegister, onSwitchToLogin }) {
     setLoading(true);
     setError('');
 
-    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
@@ -37,29 +37,16 @@ function Register({ onRegister, onSwitchToLogin }) {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        }),
+      const data = await authRegister({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        onRegister(data.user);
-      } else {
-        setError(data.error || 'Registration failed');
-      }
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      onRegister(data.user);
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError(err.message || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
