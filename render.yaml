@@ -1,5 +1,5 @@
 services:
-  # ─── 1. Node.js Backend ─────────────────────────────────────────────────────
+  # ─── 1. Node.js Backend (FREE) ──────────────────────────────────────────────
   - type: web
     name: fintweet-backend
     env: node
@@ -13,23 +13,11 @@ services:
       - key: PORT
         value: 5000
       - key: MONGO_URI
-        sync: false          # Set this in Render dashboard → your Atlas URI
+        sync: false
       - key: JWT_SECRET
-        sync: false          # Set this in Render dashboard
+        sync: false
 
-  # ─── 2. Flask ML Server ─────────────────────────────────────────────────────
-  - type: web
-    name: fintweet-flask
-    env: python
-    rootDir: flask_server
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1
-    plan: standard          # Needs ≥ 2GB RAM for TensorFlow + PyTorch + FinBERT
-    envVars:
-      - key: ALPHA_VANTAGE_KEY
-        value: 2B83K9XAU54AUHMF
-
-  # ─── 3. React Frontend (Static Site) ────────────────────────────────────────
+  # ─── 2. React Frontend (FREE Static Site) ───────────────────────────────────
   - type: web
     name: fintweet-frontend
     env: static
@@ -39,10 +27,14 @@ services:
     plan: free
     envVars:
       - key: REACT_APP_API_BASE
-        sync: false          # e.g. https://fintweet-backend.onrender.com/api
+        sync: false
       - key: REACT_APP_FLASK_URL
-        sync: false          # e.g. https://fintweet-flask.onrender.com
+        value: http://localhost:5001   # Flask runs locally during demo
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
+
+# NOTE: Flask ML server (TensorFlow+PyTorch+FinBERT) requires 2GB+ RAM
+# which exceeds Render's free tier. Run it locally with: python app.py
+
