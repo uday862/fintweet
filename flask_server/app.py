@@ -45,7 +45,7 @@ finbert.to(device)
 
 # ─────────────── TWITTER API KEYS ─────────────── #
 # (replace with your own keys)
-import constants as ct
+# import constants as ct  # Twitter API keys not needed (Twitter routes are disabled)
 # auth = tweepy.OAuthHandler(ct.consumer_key, ct.consumer_secret)
 # auth.set_access_token(ct.access_token, ct.access_token_secret)
 # api = tweepy.API(auth)
@@ -113,52 +113,74 @@ def get_finbert_scores(text):
 #         return 0, 0, 0, 0
 import requests
 
-def get_reddit_sentiment(symbol):
-    """Fetch relevant Reddit posts from r/stocks and aggregate FinBERT sentiment."""
-    url = f"https://www.reddit.com/r/stocks/search.json?q={symbol}&restrict_sr=1&sort=relevance&limit=100"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+# ─────────────── ALPHA VANTAGE CONFIG ─────────────── #
+ALPHA_VANTAGE_API_KEY = "2B83K9XAU54AUHMF"
+
+def get_alphavantage_sentiment(symbol):
+    """
+    Fetch financial news sentiment from Alpha Vantage News Sentiment API.
+    Maps Bullish/Bearish labels to fin_pos / fin_neg / fin_neu scores
+    so the model input shape stays identical.
+    """
+    url = (
+        f"https://www.alphavantage.co/query"
+        f"?function=NEWS_SENTIMENT"
+        f"&tickers={symbol}"
+        f"&limit=50"
+        f"&apikey={ALPHA_VANTAGE_API_KEY}"
+    )
+
+    # Sentiment label → (pos_weight, neg_weight, neu_weight)
+    LABEL_MAP = {
+        "Bullish":          (1.0, 0.0, 0.0),
+        "Somewhat-Bullish": (0.6, 0.1, 0.3),
+        "Neutral":          (0.0, 0.0, 1.0),
+        "Somewhat-Bearish": (0.1, 0.6, 0.3),
+        "Bearish":          (0.0, 1.0, 0.0),
+    }
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, timeout=15)
         if response.status_code != 200:
-            print(f"Reddit API status code: {response.status_code}")
+            print(f"Alpha Vantage API status: {response.status_code}")
             return 0, 0, 0, 0
 
         data = response.json()
-        posts = data.get("data", {}).get("children", [])
 
-        fin_pos = fin_neg = fin_neu = count = 0
-
-        for post in posts:
-            post_data = post.get("data", {})
-            title = post_data.get("title", "")
-            selftext = post_data.get("selftext", "")  # Body text if available
-            text = f"{title} {selftext}".strip()  # Combine, strip extras
-
-            if not text:  # Skip empty posts
-                continue
-            if count < 5:
-                try:
-                    with open("debug_posts.txt", "a", encoding="utf-8") as file:  # Append mode + UTF-8
-                        file.write(f"{symbol} post {count}: {text[:200]}...\n")  # Truncate long texts
-                except:
-                    pass  # Silent fail if still issues
-
-            scores = get_finbert_scores(text)
-            fin_pos += scores["fin_pos"]
-            fin_neg += scores["fin_neg"]
-            fin_neu += scores["fin_neu"]
-            count += 1
-
-        if count == 0:
-            print(f"No relevant posts found for {symbol}")
+        # Rate-limit / error message from AV
+        if "Information" in data or "Note" in data:
+            msg = data.get("Information") or data.get("Note", "")
+            print(f"Alpha Vantage limit hit: {msg}")
             return 0, 0, 0, 0
 
-        # Average the scores (since we're aggregating)
+        articles = data.get("feed", [])
+        fin_pos = fin_neg = fin_neu = count = 0
+
+        for article in articles:
+            # Each article has per-ticker sentiment scores
+            for ts in article.get("ticker_sentiment", []):
+                if ts.get("ticker", "").upper() != symbol.upper():
+                    continue
+                relevance = float(ts.get("relevance_score", 0))
+                if relevance < 0.1:          # skip low-relevance mentions
+                    continue
+                label = ts.get("ticker_sentiment_label", "Neutral")
+                p, n, u = LABEL_MAP.get(label, (0.0, 0.0, 1.0))
+                fin_pos += p
+                fin_neg += n
+                fin_neu += u
+                count += 1
+
+        if count == 0:
+            print(f"No relevant Alpha Vantage news for {symbol}")
+            return 0, 0, 0, 0
+
+        print(f"Alpha Vantage: {count} articles for {symbol} | "
+              f"pos={fin_pos/count:.3f} neg={fin_neg/count:.3f} neu={fin_neu/count:.3f}")
         return fin_pos / count, fin_neg / count, fin_neu / count, count
 
     except Exception as e:
-        print(f"Error fetching Reddit data for {symbol}: {e}")
+        print(f"Error fetching Alpha Vantage sentiment for {symbol}: {e}")
         return 0, 0, 0, 0
 
 
@@ -227,7 +249,7 @@ def prepare_data_for_prediction(ticker):
     for m in missing:
         df[m] = df["Close"] if "Close" in df.columns else 0
 
-    fin_pos, fin_neg, fin_neu, count = get_reddit_sentiment(ticker)    
+    fin_pos, fin_neg, fin_neu, count = get_alphavantage_sentiment(ticker)
 
     # --- get twitter sentiment ---
     sentiments = []

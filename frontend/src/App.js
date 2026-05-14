@@ -483,7 +483,8 @@ function App() {
     setPredictionLoading(true);
     setPredictedPrice(null);
     try {
-      const resp = await fetch('http://localhost:5001/predict', {
+      const FLASK_URL = process.env.REACT_APP_FLASK_URL || 'http://localhost:5001';
+      const resp = await fetch(`${FLASK_URL}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticker: selectedCompany })

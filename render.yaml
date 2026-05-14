@@ -1,0 +1,48 @@
+services:
+  # ─── 1. Node.js Backend ─────────────────────────────────────────────────────
+  - type: web
+    name: fintweet-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false          # Set this in Render dashboard → your Atlas URI
+      - key: JWT_SECRET
+        sync: false          # Set this in Render dashboard
+
+  # ─── 2. Flask ML Server ─────────────────────────────────────────────────────
+  - type: web
+    name: fintweet-flask
+    env: python
+    rootDir: flask_server
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1
+    plan: standard          # Needs ≥ 2GB RAM for TensorFlow + PyTorch + FinBERT
+    envVars:
+      - key: ALPHA_VANTAGE_KEY
+        value: 2B83K9XAU54AUHMF
+
+  # ─── 3. React Frontend (Static Site) ────────────────────────────────────────
+  - type: web
+    name: fintweet-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    plan: free
+    envVars:
+      - key: REACT_APP_API_BASE
+        sync: false          # e.g. https://fintweet-backend.onrender.com/api
+      - key: REACT_APP_FLASK_URL
+        sync: false          # e.g. https://fintweet-flask.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
